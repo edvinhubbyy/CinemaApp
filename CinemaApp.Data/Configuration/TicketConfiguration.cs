@@ -16,7 +16,7 @@ namespace CinemaApp.Data.Configuration
             entity
                 .Property(t => t.Price)
                 .IsRequired()
-                .HasColumnType("money(18,2)");
+                .HasColumnType("decimal(18,2)");
 
 
             entity
