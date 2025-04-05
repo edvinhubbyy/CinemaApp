@@ -10,4 +10,9 @@ namespace CinemaApp.Common.Constants
     {
         public const string MoneyType = "money(18,2)";
     }
+
+    public static class Movie
+    {
+        public const int TitleMaxLength = 150;
+    }
 }

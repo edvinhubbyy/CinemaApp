@@ -7,15 +7,18 @@ namespace CinemaApp.Models
 {
     public class Ticket
     {
-        [Key]
+        
         public Guid Id { get; set; }
 
-        [Required]
+       
+        public decimal Price { get; set; }
+
+        
         public Guid CinemaMovieId { get; set; }
 
         public CinemaMovie CinemaMovie { get; set; } = null!;
 
-        [Required]
+        
         public Guid ApplicationUserId { get; set; }
 
         public ApplicationUser? ApplicationUser { get; set; }

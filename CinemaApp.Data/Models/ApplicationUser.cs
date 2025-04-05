@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using CinemaApp.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace CinemaApp.Data.Models
 {
@@ -10,6 +11,11 @@ namespace CinemaApp.Data.Models
             Id = Guid.NewGuid();
         }
 
+        public ICollection<ApplicationUserMovie> Watchlist { get; set; }
+            = new HashSet<ApplicationUserMovie>();
+
+        public ICollection<Ticket> Ticket { get; set; }
+            = new HashSet<Ticket>();
 
     }
 }

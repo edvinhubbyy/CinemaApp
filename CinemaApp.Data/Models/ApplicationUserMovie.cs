@@ -13,5 +13,7 @@ namespace CinemaApp.Models
 
         public Movie Movie { get; set; } = null!;
 
+        public bool IsDeleted { get; set; }
+
     }
 }
