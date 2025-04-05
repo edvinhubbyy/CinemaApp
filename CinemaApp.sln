@@ -3,11 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.34916.146
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CinemaApp", "CinemaApp\CinemaApp.csproj", "{A2F50A9E-9AED-4AD3-962D-8683B9C399FD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CinemaApp", "CinemaApp\CinemaApp.csproj", "{A2F50A9E-9AED-4AD3-962D-8683B9C399FD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CinemaApp.Data", "CinemaApp.Data\CinemaApp.Data.csproj", "{79EEB5F5-BD5E-4DDF-9401-FB97DBDAFE81}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CinemaApp.Data", "CinemaApp.Data\CinemaApp.Data.csproj", "{79EEB5F5-BD5E-4DDF-9401-FB97DBDAFE81}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CinemaApp.Services", "CinemaApp.Services\CinemaApp.Services.csproj", "{00F60EFC-CB88-458F-BC89-4AD924272A88}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CinemaApp.Services", "CinemaApp.Services\CinemaApp.Services.csproj", "{00F60EFC-CB88-458F-BC89-4AD924272A88}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CinemaApp.Common", "CinemaApp.Common\CinemaApp.Common.csproj", "{3182C2F1-6936-4FB8-8D39-1919BF3C3B00}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{00F60EFC-CB88-458F-BC89-4AD924272A88}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00F60EFC-CB88-458F-BC89-4AD924272A88}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{00F60EFC-CB88-458F-BC89-4AD924272A88}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3182C2F1-6936-4FB8-8D39-1919BF3C3B00}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3182C2F1-6936-4FB8-8D39-1919BF3C3B00}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3182C2F1-6936-4FB8-8D39-1919BF3C3B00}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3182C2F1-6936-4FB8-8D39-1919BF3C3B00}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

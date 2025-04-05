@@ -10,5 +10,6 @@ namespace CinemaApp.Data.Models
             Id = Guid.NewGuid();
         }
 
+
     }
 }
