@@ -35,6 +35,37 @@ namespace CinemaApp.Data.Configuration
             entity
                 .HasQueryFilter(c => c.IsDeleted == false);
 
+            entity
+                .HasData(this.SeedCinemas());
+
         }
+
+        private IEnumerable<Cinema> SeedCinemas()
+        {
+            IEnumerable<Cinema> cinemas = new List<Cinema>()
+            {
+                new Cinema()
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Cinema city",
+                    Location = "Sofia"
+                },
+                new Cinema()
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Cinema city",
+                    Location = "Plovdiv"
+                },
+                new Cinema()
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Cinemax",
+                    Location = "Varna"
+                }
+            };
+
+            return cinemas;
+        }
+
     }
 }
