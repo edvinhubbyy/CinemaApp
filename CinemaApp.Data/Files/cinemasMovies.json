@@ -1,35 +1,35 @@
 [
   {
-    "Movie": "Harry Potter and the Goblet of Fire",
-    "Cinema": "Cinemax",
+    "MovieId": "AE50A5AB-9642-466F-B528-3CC61071BB4C",
+    "CinemaId": "6D5ABDAB-5EEF-4CC7-B4CC-31AF546A1AF1",
     "AvailableTickets": 150,
     "IsDeleted": false,
     "Showtimes": "01010"
   },
   {
-    "Movie": "The Dark Knight",
-    "Cinema": "Cinemax",
+    "MovieId": "02B52BB0-1C2B-49A4-BA66-6D33F81D38D1",
+    "CinemaId": "6D5ABDAB-5EEF-4CC7-B4CC-31AF546A1AF1",
     "AvailableTickets": 120,
     "IsDeleted": false,
     "Showtimes": "11000"
   },
   {
-    "Movie": "Interstellar",
-    "Cinema": "Cinema city - Plovdiv",
+    "MovieId": "16376CC6-B3E0-4BF7-A0E4-9CBD1490522C",
+    "CinemaId": "281E2A3C-F026-469C-A50E-88BEC634793E",
     "AvailableTickets": 100,
     "IsDeleted": false,
     "Showtimes": "00011"
   },
   {
-    "Movie": "Avatar",
-    "Cinema": "Cinema city - Sofia",
+    "MovieId": "811A1A9E-61A8-4F6F-ACB0-55A252C2B713",
+    "CinemaId": "281E2A3C-F026-469C-A50E-88BEC634793E",
     "AvailableTickets": 200,
     "IsDeleted": false,
     "Showtimes": "10001"
   },
   {
-    "Movie": "The Shawshank Redemption",
-    "Cinema": "Cinema city - Sofia",
+    "MovieId": "E00208B1-CB12-4BD4-8AC1-36AB62F7B4C9",
+    "CinemaId": "80C5421D-45B1-46AE-8DCA-CB88F05AF4D4",
     "AvailableTickets": 180,
     "IsDeleted": false,
     "Showtimes": "00001"

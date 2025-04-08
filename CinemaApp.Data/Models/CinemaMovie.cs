@@ -22,7 +22,7 @@ namespace CinemaApp.Models
 
         public bool IsDeleted { get; set; }
     
-        public string Showtimes { get; set; } = "00000";
+        public string? Showtimes { get; set; } = "00000";
 
         public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
 

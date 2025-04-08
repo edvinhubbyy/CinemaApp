@@ -1,14 +1,27 @@
 ﻿using CinemaApp.Data.Dtos;
+using CinemaApp.Data.Utilities.Interfaces;
 using CinemaApp.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System.Text;
 using System.Text.Json;
+using static CinemaApp.Common.OutputMessages.ErrorMessages;
 
 namespace CinemaApp.Data.Utilities
 {
-    public static class DataProcessor
+    public class DataProcessor
     {
 
-        public static async Task ImportMoviesFromJson(CinemaDbContext context)
+        private readonly IValidator entityValidator;
+        private readonly ILogger<DataProcessor> logger;
+
+        public DataProcessor(IValidator entityValidator, ILogger<DataProcessor> logger)
+        {
+            this.entityValidator = entityValidator;
+            this.logger = logger;
+        }
+
+        public async Task ImportMoviesFromJson(CinemaDbContext context)
         {
             string path = Path.Combine(AppContext.BaseDirectory, "Files", "movies.json");
             string moviesStr = await File.ReadAllTextAsync(path);
@@ -31,85 +44,110 @@ namespace CinemaApp.Data.Utilities
             await context.Movies.AddRangeAsync(movies);
         }
 
-        public static async Task ImportCinemaMoviesFromJson(CinemaDbContext context)
+        public async Task ImportCinemaMoviesFromJson(CinemaDbContext context)
         {
             string path = Path.Combine(AppContext.BaseDirectory, "Files", "cinemasMovies.json");
             string cinemaMoviesStr = await File.ReadAllTextAsync(path);
-            var cinemaMovies = JsonSerializer.Deserialize<List<CinemaMovieDto>>(cinemaMoviesStr);
 
-            // Extract movie titles
-            var movieTitles = cinemaMovies.Select(m => m.Movie).Distinct().ToArray();
-
-            // Fetch existing movies from DB by title
-            var existingMovies = await context
-                .Movies
-                .Where(m => movieTitles.Contains(m.Title))
-                .ToDictionaryAsync(m => m.Title);
-
-            // Add missing movies with new IDs
-            foreach (var title in movieTitles)
+            try
             {
-                if (!existingMovies.ContainsKey(title))
-                {
-                    var newMovie = new Movie
-                    {
-                        Id = Guid.NewGuid(),
-                        Title = title
-                    };
 
-                    existingMovies[title] = newMovie;
-                    await context.Movies.AddAsync(newMovie);
+
+                CinemaMovieDto[]? cinemaMovieDtos =
+                    JsonSerializer.Deserialize<CinemaMovieDto[]>(cinemaMoviesStr);
+                if (cinemaMovieDtos != null! && cinemaMovieDtos.Length > 0)
+                {
+                    ICollection<CinemaMovie> validCinemaMovie = new List<CinemaMovie>();
+                    foreach (CinemaMovieDto cinemaMobieDto in cinemaMovieDtos)
+                    {
+                        if (!this.entityValidator.IsValid(cinemaMobieDto))
+                        {
+                            // Prepare log message with error messages from validation
+                            StringBuilder logMessage = new StringBuilder();
+                            logMessage.Append(string.Format(EntityImportError, nameof(CinemaMovie)))
+                            .AppendLine(string.Join(Environment.NewLine, this.entityValidator.ErrorMessages));
+
+                            // Log the message
+                            this.logger.LogWarning(logMessage.ToString().TrimEnd());
+
+                            // Skip the current DTO instance
+                            continue;
+                        }
+
+                        string[] cinemaInfo = cinemaMobieDto
+                            .Cinema
+                            .Split(" - ", StringSplitOptions.RemoveEmptyEntries);
+
+                        string cinemaName = cinemaInfo[0];
+                        string? cinemaLocation = cinemaInfo.Length > 1 ?
+                            cinemaInfo[1] : null;
+
+
+                        IQueryable<Cinema> cinemaQuery = context
+                            .Cinemas
+                            .Where(c => c.Name == cinemaName);
+
+                        if (cinemaLocation != null)
+                        {
+                            cinemaQuery = cinemaQuery
+                                .Where(c => c.Location == cinemaLocation);
+                        }
+
+                        Cinema? cinema = await cinemaQuery
+                            .FirstOrDefaultAsync();
+
+
+                        Movie? movie = await context
+                            .Movies
+                            .FirstOrDefaultAsync(m => m.Title == cinemaMobieDto.Movie);
+
+                        if (cinema == null || movie == null)
+                        {
+                            // Non existing movie or cinema => cannot import MovieCinema DTO
+                            string logMessage = string.Format(EntityImportError, nameof(CinemaMovie)) +
+                                ReferencedEntityMissing;
+
+                            this.logger.LogWarning(logMessage);
+
+                            continue;
+                        }
+
+                        CinemaMovie? existingProjection = await context
+                            .CinemasMovies
+                            .FirstOrDefaultAsync(cm => cm.CinemaId == cinema.Id &&
+                                                    cm.MovieId == movie.Id);
+
+                        if (existingProjection != null &&
+                            existingProjection.Showtimes == cinemaMobieDto.Showtimes)
+                        {
+                            this.logger.LogWarning(EntityInstanceAlreadyExists);
+
+                            continue;
+                        }
+
+                        CinemaMovie newCinemaMovie = new CinemaMovie()
+                        {
+                            CinemaId = cinema.Id,
+                            MovieId = movie.Id,
+                            AvailableTickets = cinemaMobieDto.AvailableTickets,
+                            IsDeleted = cinemaMobieDto.IsDeleted,
+                            Showtimes = cinemaMobieDto.Showtimes
+                        };
+                        validCinemaMovie.Add(newCinemaMovie);
+                    }
+                    await context.CinemasMovies.AddRangeAsync(validCinemaMovie);
+                    await context.SaveChangesAsync();
                 }
             }
-
-            // Handle unique cinemas
-            var cinemaGroups = cinemaMovies
-                .Select(cm => new
-                {
-                    Key = cm.Cinema,
-                    Name = cm.Cinema.Split('-', StringSplitOptions.RemoveEmptyEntries).First(),
-                    Location = cm.Cinema.Contains('-')
-                        ? cm.Cinema.Split('-', StringSplitOptions.RemoveEmptyEntries).Last()
-                        : string.Empty
-                })
-                .GroupBy(c => c.Key);
-
-            Dictionary<string, Cinema> cinemas = new();
-
-            foreach (var group in cinemaGroups)
+            catch (Exception ex)
             {
-                var cinema = new Cinema
-                {
-                    Id = Guid.NewGuid(),
-                    Name = group.First().Name,
-                    Location = group.First().Location
-                };
-                cinemas[group.Key] = cinema;
+                this.logger.LogError(ex.Message);
+                throw;
             }
 
-            // Create CinemaMovie entries
-            List<CinemaMovie> cinemaMovieEntities = new();
-
-            foreach (var cm in cinemaMovies)
-            {
-                var cinemaMovie = new CinemaMovie
-                {
-                    Id = Guid.NewGuid(),
-                    AvailableTickets = cm.AvailableTickets,
-                    Cinema = cinemas[cm.Cinema],
-                    Movie = existingMovies[cm.Movie],
-                    Showtimes = cm.Showtimes
-                };
-
-                cinemaMovieEntities.Add(cinemaMovie);
-            }
-
-            await context.Cinemas.AddRangeAsync(cinemas.Values);
-            await context.CinemasMovies.AddRangeAsync(cinemaMovieEntities);
-            await context.SaveChangesAsync();
         }
 
-        public static async Task ImportTicketFromXml(CinemaDbContext context)
+        public async Task ImportTicketFromXml(CinemaDbContext context)
         {
             throw new NotImplementedException();
         }
