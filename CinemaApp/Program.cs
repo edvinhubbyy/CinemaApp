@@ -2,6 +2,7 @@ using CinemaApp.Data;
 using CinemaApp.Data.Models;
 using CinemaApp.Data.Utilities;
 using CinemaApp.Data.Utilities.Interfaces;
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +15,7 @@ builder.Services.AddDbContext<CinemaDbContext>(options =>
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddScoped<IValidator, EntityValidator>();
+builder.Services.AddSingleton<IXmlHelper, XmlHelper>();
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
@@ -31,6 +33,7 @@ builder.Services
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
+builder.Services.AddScoped<IDbSeeder, DataProcessor>();
 
 var app = builder.Build();
 
@@ -58,25 +61,14 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 app.MapRazorPages();
 
-using (var scope = app.Services.CreateScope())
+if (app.Environment.IsDevelopment())
 {
+    using IServiceScope scope = app.Services.CreateScope();
     IServiceProvider services = scope.ServiceProvider;
 
-    CinemaDbContext dbContext = services.GetRequiredService<CinemaDbContext>();
-    IValidator entityValidtor = services.GetRequiredService<IValidator>();
-    ILogger<DataProcessor> logger = services.GetRequiredService<ILogger<DataProcessor>>();
+    IDbSeeder dataProcessor = services.GetRequiredService<IDbSeeder>();
+    await dataProcessor.SeedData();
 
-    DataProcessor dataProcessor = new DataProcessor(entityValidtor, logger);
-
-    dataProcessor.SeedRoles(services);
-    dataProcessor.SeedUsers(services);
-    
-    //await dataProcessor.ImportCinemaMoviesFromJson(dbContext);
-    // Uncomment so u import the shit 
-
-    //await DataProcessor.ImportMoviesFromJson(dbContext);
-    //await DataProcessor.ImportCinemaMoviesFromJson(dbContext);
-    //await DataProcessor.ImportTicketFromXml(dbContext);
 }
 
 

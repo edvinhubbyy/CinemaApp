@@ -1,4 +1,4 @@
-﻿namespace CinemaApp.Data.Dtos
+﻿﻿namespace CinemaApp.Data.Dtos
 {
     using System.ComponentModel.DataAnnotations;
     using System.Xml.Serialization;

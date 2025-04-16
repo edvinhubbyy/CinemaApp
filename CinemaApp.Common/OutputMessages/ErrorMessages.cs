@@ -16,5 +16,8 @@ namespace CinemaApp.Common.OutputMessages
         
         public const string EntityInstanceAlreadyExists = 
             "One or more of the referenced entities is skipped due to existing record with the same data";
+
+        public const string EntityDataParseError = "Some of the entuty data could not be parsed corectly! Please check your formatting";
+
     }
 }
