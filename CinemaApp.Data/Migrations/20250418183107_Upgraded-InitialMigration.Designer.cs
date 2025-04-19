@@ -4,6 +4,7 @@ using CinemaApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CinemaApp.Data.Migrations
 {
     [DbContext(typeof(CinemaDbContext))]
-    partial class CinemaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250418183107_Upgraded-InitialMigration")]
+    partial class UpgradedInitialMigration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -91,27 +94,21 @@ namespace CinemaApp.Data.Migrations
             modelBuilder.Entity("CinemaApp.Models.ApplicationUserMovie", b =>
                 {
                     b.Property<Guid>("ApplicationUserId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasComment("Foreign key to the user");
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("MovieId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasComment("Foreign key to the movie");
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
-                        .HasDefaultValue(false)
-                        .HasComment("Shows if movie from user watchlist is deleted");
+                        .HasDefaultValue(false);
 
                     b.HasKey("ApplicationUserId", "MovieId");
 
                     b.HasIndex("MovieId");
 
-                    b.ToTable("ApplicationUserMovies", t =>
-                        {
-                            t.HasComment("Movie watchlist for system user");
-                        });
+                    b.ToTable("ApplicationUserMovies");
                 });
 
             modelBuilder.Entity("CinemaApp.Models.Cinema", b =>
@@ -147,21 +144,21 @@ namespace CinemaApp.Data.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("7a49e2e2-efce-47f6-80b9-37392a17dad8"),
+                            Id = new Guid("b6e8fa59-7fe0-4b46-9b1f-efa46eff6b64"),
                             IsDeleted = false,
                             Location = "Sofia",
                             Name = "Cinema city"
                         },
                         new
                         {
-                            Id = new Guid("85da53f3-6f58-426f-b134-5e05891dfc3e"),
+                            Id = new Guid("3afe574d-9b9d-427e-9b5b-41af1d59e7a6"),
                             IsDeleted = false,
                             Location = "Plovdiv",
                             Name = "Cinema city"
                         },
                         new
                         {
-                            Id = new Guid("ee839549-58ca-4711-b119-9877ea00d83c"),
+                            Id = new Guid("62147fdc-efa1-4bb4-8a8d-9eba39c728fe"),
                             IsDeleted = false,
                             Location = "Varna",
                             Name = "Cinemax"

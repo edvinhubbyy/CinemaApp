@@ -8,7 +8,7 @@ namespace CinemaApp.Data.Models
 
         public ApplicationUser()
         {
-            Id = Guid.NewGuid();
+            this.Id = Guid.NewGuid();
         }
 
         public ICollection<ApplicationUserMovie> Watchlist { get; set; }

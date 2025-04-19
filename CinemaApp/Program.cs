@@ -21,7 +21,6 @@ builder.Services
     .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     {
         options.SignIn.RequireConfirmedAccount = false;
-
         options.Password.RequireDigit = true;
         options.Password.RequireNonAlphanumeric = false;
         options.Password.RequireLowercase = false;
@@ -29,7 +28,9 @@ builder.Services
         options.Password.RequiredLength = 3;
     })
     .AddRoles<IdentityRole<Guid>>()
+    .AddRoleManager<RoleManager<IdentityRole<Guid>>>()
     .AddEntityFrameworkStores<CinemaDbContext>();
+
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();

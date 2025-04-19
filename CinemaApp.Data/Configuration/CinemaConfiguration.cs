@@ -1,43 +1,45 @@
-﻿using CinemaApp.Models;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace CinemaApp.Data.Configuration
+﻿namespace CinemaApp.Data.Configuration
 {
+    using Models;
+    using static Common.Constants.EntityConstants.Cinema;
+
+    using Microsoft.EntityFrameworkCore;
+    using Microsoft.EntityFrameworkCore.Metadata.Builders;
+    using CinemaApp.Models;
+
     internal class CinemaConfiguration : IEntityTypeConfiguration<Cinema>
     {
         public void Configure(EntityTypeBuilder<Cinema> entity)
         {
-
+            // Define the primary key of the cinema entity
             entity
                 .HasKey(c => c.Id);
 
+            // Define constraints for the Name column
             entity
                 .Property(c => c.Name)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(NameMaxLength);
 
+            // Define constraints for the Location column
             entity
                 .Property(c => c.Location)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(LocationMaxLength);
 
+            // Define constraints for the IsDeleted column
             entity
                 .Property(c => c.IsDeleted)
                 .IsRequired()
                 .HasDefaultValue(false);
 
+            // Ensure that only existing records are used in the business logic
             entity
                 .HasQueryFilter(c => c.IsDeleted == false);
 
+            // Add seeding of data in the Cinema table
             entity
                 .HasData(this.SeedCinemas());
-
         }
 
         private IEnumerable<Cinema> SeedCinemas()
@@ -66,6 +68,5 @@ namespace CinemaApp.Data.Configuration
 
             return cinemas;
         }
-
     }
 }

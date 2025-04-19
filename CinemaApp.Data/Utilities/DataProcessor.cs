@@ -39,21 +39,22 @@ namespace CinemaApp.Data.Utilities
             this.xmlHelper = xmlHelper;
             this.logger = logger;
         }
-
+       
         public async Task SeedData()
         {
-            this.SeedRoles();
-            this.SeedUsers();
+            await this.SeedRoles();
+            await this.SeedUsers();
 
 
             // TODO: Implement mechanism for detecting seeded data!
             //await this.ImportMoviesFromJson();
             //await this.ImportCinemaMoviesFromJson();
             //await this.ImportTicketFromXml();
+            //await this.ImportWatchlistFromXml();
 
         }
 
-        
+
 
         private async Task ImportMoviesFromJson()
         {
@@ -76,6 +77,7 @@ namespace CinemaApp.Data.Utilities
 
         private async Task ImportCinemaMoviesFromJson()
         {
+
             string path = Path.Combine(AppContext.BaseDirectory, "Files", "cinemasMovies.json");
             string cinemaMoviesStr = await File.ReadAllTextAsync(path);
 
@@ -146,7 +148,7 @@ namespace CinemaApp.Data.Utilities
                         if (existingProjection != null &&
                             existingProjection.Showtimes == cinemaMobieDto.Showtimes)
                         {
-                            this.logger.LogWarning(EntityInstanceAlreadyExists);
+                            this.logger.LogWarning(EntityInstanceAlreadyExist);
 
                             continue;
                         }
@@ -175,16 +177,15 @@ namespace CinemaApp.Data.Utilities
 
         private async Task ImportTicketFromXml()
         {
+            const string rootName = "Tickets";
+
             string path = Path.Combine(AppContext.BaseDirectory, "Files", "tickets.xml");
             string ticketStr = await File.ReadAllTextAsync(path);
 
             try
             {
-
                 TicketDto[]? ticketDtos = this.xmlHelper
-                    .Deserialize<TicketDto[]>(ticketStr, "Tickets");
-
-
+                    .Deserialize<TicketDto[]>(ticketStr, rootName);
 
                 if (ticketDtos != null && ticketDtos.Length > 0)
                 {
@@ -192,74 +193,75 @@ namespace CinemaApp.Data.Utilities
 
                     foreach (TicketDto ticketDto in ticketDtos)
                     {
-
                         if (!this.entityValidator.IsValid(ticketDto))
                         {
                             this.logger
-                                .LogWarning(this.BuildEntityValidatorWarningMessage(nameof(CinemaMovie)));
+                                .LogWarning(this.BuildEntityValidatorWarningMessage(nameof(Ticket)));
 
-                            // Skip current DTO instance
                             continue;
                         }
 
-                        bool isPriceValid = decimal
-                            .TryParse(ticketDto.Price, out var ticketPrice);
-
-                        bool isMovieIdValid = Guid
-                            .TryParse(ticketDto.MovieId, out Guid ticketMovieId);
-
-                        bool isCinemaIdValid = Guid
-                            .TryParse(ticketDto.CinemaId, out Guid ticketCinemaId);
-
-                        bool isUserIdValid = Guid
-                            .TryParse(ticketDto.UserId, out Guid ticketUserId);
+                        bool isPriceValid = decimal.TryParse(ticketDto.Price, out decimal ticketPrice);
+                        bool isMovieIdValid = Guid.TryParse(ticketDto.MovieId, out Guid ticketMovieId);
+                        bool isCinemaIdValid = Guid.TryParse(ticketDto.CinemaId, out Guid ticketCinemaId);
+                        bool isUserIdValid = Guid.TryParse(ticketDto.UserId, out Guid ticketUserId);
 
                         if ((!isPriceValid) || (!isMovieIdValid) || (!isCinemaIdValid) || (!isUserIdValid))
                         {
                             string logMessage = string.Format(EntityImportError, nameof(Ticket)) + EntityDataParseError;
-
-                            this.logger
-                                .LogWarning(logMessage);
-
+                            this.logger.LogWarning(logMessage);
                             continue;
                         }
 
-
-                        CinemaMovie? ticketCinemaMovie = await this.dbContext
+                        // Try to find the matching CinemaMovie
+                        CinemaMovie? ticketCinemaMovie = await dbContext
                             .CinemasMovies
                             .SingleOrDefaultAsync(cm => cm.CinemaId == ticketCinemaId &&
                                                         cm.MovieId == ticketMovieId);
-                        ApplicationUser? ticketUser = await this.dbContext
+
+                        // If not found, create it
+                        if (ticketCinemaMovie == null)
+                        {
+                            ticketCinemaMovie = new CinemaMovie
+                            {
+                                Id = Guid.NewGuid(),
+                                CinemaId = ticketCinemaId,
+                                MovieId = ticketMovieId,
+                                AvailableTickets = 100,
+                                IsDeleted = false,
+                                Showtimes = "00000"
+                            };
+
+                            dbContext.CinemasMovies.Add(ticketCinemaMovie);
+                            await dbContext.SaveChangesAsync(); // Needed to generate the ID
+                        }
+
+                        // Validate user
+                        ApplicationUser? ticketUser = await dbContext
                             .Users
                             .SingleOrDefaultAsync(u => u.Id == ticketUserId);
-                        if (ticketUser == null || ticketCinemaMovie == null)
+
+                        if (ticketUser == null)
                         {
-                            // Non-existing movie or cinema => cannot import the MovieCinema DTO!
                             string logMessage = string.Format(EntityImportError, nameof(Ticket)) +
                                                 ReferencedEntityMissing;
-
-                            // Log warning message
                             this.logger.LogWarning(logMessage);
-
-                            // Skip the current DTO instance
                             continue;
                         }
 
-
-
-                        Ticket newTicket = new Ticket()
+                        // Create Ticket
+                        Ticket newTicket = new Ticket
                         {
                             Price = ticketPrice,
                             ApplicationUserId = ticketUserId,
-                            CinemaMovieId = ticketMovieId,
+                            CinemaMovieId = ticketCinemaMovie.Id
                         };
-                        validTickets.Add(newTicket);
 
+                        validTickets.Add(newTicket);
                     }
 
                     await this.dbContext.Tickets.AddRangeAsync(validTickets);
                     await this.dbContext.SaveChangesAsync();
-
                 }
             }
             catch (Exception ex)
@@ -267,48 +269,42 @@ namespace CinemaApp.Data.Utilities
                 this.logger.LogError(ex.Message);
                 throw;
             }
-
         }
 
 
 
-        private void SeedUsers()
+
+        private async Task SeedRoles()
         {
-
-            SeedUser(this.userManager, "admin@example.com", "Admin@123", "Admin");
-            SeedUser(this.userManager, "appManager@example.com", "123asd", "Manager");
-            SeedUser(this.userManager, "appUser@example.com", "123asd", "User");
-        }
-
-        private void SeedRoles()
-        {
-
             string[] roles = { "Admin", "Manager", "User" };
 
-            foreach (var role in roles)
+            foreach (string role in roles)
             {
-                var roleExists = this.roleManager
-                    .RoleExistsAsync(role)
-                    .GetAwaiter()
-                    .GetResult();
-
+                bool roleExists = await this.roleManager
+                    .RoleExistsAsync(role);
                 if (!roleExists)
                 {
-                    var newRole = new IdentityRole<Guid>(role);
-                    var result = this.roleManager.CreateAsync(newRole);
-                    if (!result.IsCompletedSuccessfully)
+                    IdentityResult result = await this.roleManager
+                        .CreateAsync(new IdentityRole<Guid>(role));
+                    if (!result.Succeeded)
                     {
-                        throw new Exception($"Failed to create role: {role}");
+                        throw new Exception(string.Format(FailedToCreateRole, role));
                     }
-                    continue;
                 }
-
             }
         }
 
-        private void SeedUser(UserManager<ApplicationUser> userManager, string email, string password, string role)
+        private async Task SeedUsers()
         {
-            var user = userManager.FindByEmailAsync(email).GetAwaiter().GetResult();
+            await this.SeedUser("admin@example.com", "Admin@123", "Admin");
+            await this.SeedUser("appManager@example.com", "123asd", "Manager");
+            await this.SeedUser("appUser@example.com", "123asd", "User");
+        }
+
+        private async Task SeedUser(string email, string password, string role)
+        {
+            ApplicationUser? user = await this.userManager
+                .FindByEmailAsync(email);
             if (user == null)
             {
                 user = new ApplicationUser
@@ -316,26 +312,109 @@ namespace CinemaApp.Data.Utilities
                     UserName = email,
                     Email = email
                 };
-                var createUserResult = userManager.CreateAsync(user, password).GetAwaiter().GetResult();
+
+                IdentityResult createUserResult = await this.userManager
+                    .CreateAsync(user, password);
                 if (!createUserResult.Succeeded)
                 {
-                    throw new Exception($"Failed to create user: {email}");
+                    throw new Exception(string.Format(FailedToCreateUser, email));
                 }
             }
 
-            var isInRole = userManager.IsInRoleAsync(user, role).GetAwaiter().GetResult();
+            bool isInRole = await this.userManager
+                .IsInRoleAsync(user, role);
             if (!isInRole)
             {
-                var addRoleResult = userManager.AddToRoleAsync(user, role).GetAwaiter().GetResult();
+                IdentityResult addRoleResult = await this.userManager
+                    .AddToRoleAsync(user, role);
                 if (!addRoleResult.Succeeded)
                 {
-                    throw new Exception($"Failed to assign {role} role to user: {email}");
+                    throw new Exception(string.Format(FailedToAssignUserToRole, role, email));
                 }
             }
+        }
 
+        private async Task ImportWatchlistFromXml()
+        {
+            const string watchlistRootName = "Users";
 
+            string path = Path.Combine(AppContext.BaseDirectory, "Files", "watchlists.xml");
+            string watchlistsStr = await File.ReadAllTextAsync(path);
+
+            try
+            {
+                UserWatchlistDto[]? watchlistsDtos = xmlHelper
+                    .Deserialize<UserWatchlistDto[]>(watchlistsStr, watchlistRootName);
+
+                if (watchlistsDtos != null && watchlistsDtos.Length > 0)
+                {
+                    ICollection<ApplicationUserMovie> validWatchlists = new List<ApplicationUserMovie>();
+                    foreach (UserWatchlistDto watchlistDto in watchlistsDtos)
+                    {
+                        if (!this.entityValidator.IsValid(watchlistDto))
+                        {
+                            // Log the message
+                            this.logger.LogWarning(this.BuildEntityValidatorWarningMessage(nameof(ApplicationUserMovie)));
+
+                            // Skip if not valid
+                            continue;
+                        }
+
+                        ApplicationUser? user = await this.userManager
+                            .FindByNameAsync(watchlistDto.Username);
+                        if (user == null)
+                        {
+                            // Log the message
+                            this.logger.LogWarning(ReferencedEntityMissing);
+
+                            // Skip if not valid
+                            continue;
+                        }
+
+                        foreach (UserWatchlistMovieDto movieDto in watchlistDto.Movies)
+                        {
+                            if (!this.entityValidator.IsValid(movieDto))
+                            {
+                                // Log the message
+                                this.logger.LogWarning(this.BuildEntityValidatorWarningMessage(nameof(ApplicationUserMovie)));
+
+                                // Skip if not valid
+                                continue;
+                            }
+
+                            Movie? movie = await this.dbContext
+                                .Movies
+                                .FirstOrDefaultAsync(m => m.Title == movieDto.Title);
+                            if (movie == null)
+                            {
+                                this.logger.LogWarning(ReferencedEntityMissing);
+
+                                continue;
+                            }
+
+                            ApplicationUserMovie userMovie = new ApplicationUserMovie()
+                            {
+                                ApplicationUser = user,
+                                Movie = movie
+                            };
+                            validWatchlists.Add(userMovie);
+                        }
+
+                    }
+                    await dbContext.ApplicationUserMovies.AddRangeAsync(validWatchlists);
+                    await dbContext.SaveChangesAsync();
+
+                }
+            }
+            catch (Exception e)
+            {
+                this.logger.LogError(e.Message);
+                throw;
+            }
 
         }
+
+
 
         private string BuildEntityValidatorWarningMessage(string entityName)
         {
