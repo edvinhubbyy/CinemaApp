@@ -46,11 +46,10 @@ namespace CinemaApp.Data.Utilities
             await this.SeedUsers();
 
 
-            // TODO: Implement mechanism for detecting seeded data!
-            //await this.ImportMoviesFromJson();
-            //await this.ImportCinemaMoviesFromJson();
-            //await this.ImportTicketFromXml();
-            //await this.ImportWatchlistFromXml();
+            await this.ImportMoviesFromJson();
+            await this.ImportCinemaMoviesFromJson();
+            await this.ImportTicketFromXml();
+            await this.ImportWatchlistFromXml();
 
         }
 
@@ -71,6 +70,11 @@ namespace CinemaApp.Data.Utilities
                 {
                     await this.dbContext.Movies.AddRangeAsync(movies);
                     await this.dbContext.SaveChangesAsync();
+                }
+                else
+                {
+                    // Warning
+                    this.logger.LogWarning(EntityInstanceAlreadyExist);
                 }
             }
         }
@@ -236,6 +240,7 @@ namespace CinemaApp.Data.Utilities
                             await dbContext.SaveChangesAsync(); // Needed to generate the ID
                         }
 
+
                         // Validate user
                         ApplicationUser? ticketUser = await dbContext
                             .Users
@@ -246,6 +251,19 @@ namespace CinemaApp.Data.Utilities
                             string logMessage = string.Format(EntityImportError, nameof(Ticket)) +
                                                 ReferencedEntityMissing;
                             this.logger.LogWarning(logMessage);
+                            continue;
+                        }
+                        bool ticketExists = await dbContext
+                            .Tickets
+                            .AnyAsync(t => t.ApplicationUserId == ticketUserId &&
+                                        t.CinemaMovieId == ticketCinemaMovie.Id);
+
+                        if (ticketExists)
+                        {
+                            // Warning
+                            this.logger.LogWarning(EntityInstanceAlreadyExist);
+
+                            // Skip the current Ticket instance becauase of dublication
                             continue;
                         }
 
@@ -271,7 +289,98 @@ namespace CinemaApp.Data.Utilities
             }
         }
 
+        private async Task ImportWatchlistFromXml()
+        {
+            const string watchlistRootName = "Users";
 
+            string path = Path.Combine(AppContext.BaseDirectory, "Files", "watchlists.xml");
+            string watchlistsStr = await File.ReadAllTextAsync(path);
+
+            try
+            {
+                UserWatchlistDto[]? watchlistsDtos = xmlHelper
+                    .Deserialize<UserWatchlistDto[]>(watchlistsStr, watchlistRootName);
+
+                if (watchlistsDtos != null && watchlistsDtos.Length > 0)
+                {
+                    ICollection<ApplicationUserMovie> validWatchlists = new List<ApplicationUserMovie>();
+                    foreach (UserWatchlistDto watchlistDto in watchlistsDtos)
+                    {
+                        if (!this.entityValidator.IsValid(watchlistDto))
+                        {
+                            // Log the message
+                            this.logger.LogWarning(this.BuildEntityValidatorWarningMessage(nameof(ApplicationUserMovie)));
+
+                            // Skip if not valid
+                            continue;
+                        }
+
+                        ApplicationUser? user = await this.userManager
+                            .FindByNameAsync(watchlistDto.Username);
+                        if (user == null)
+                        {
+                            // Log the message
+                            this.logger.LogWarning(ReferencedEntityMissing);
+
+                            // Skip if not valid
+                            continue;
+                        }
+
+                        foreach (UserWatchlistMovieDto movieDto in watchlistDto.Movies)
+                        {
+                            if (!this.entityValidator.IsValid(movieDto))
+                            {
+                                // Log the message
+                                this.logger.LogWarning(this.BuildEntityValidatorWarningMessage(nameof(ApplicationUserMovie)));
+
+                                // Skip if not valid
+                                continue;
+                            }
+
+                            Movie? movie = await this.dbContext
+                                .Movies
+                                .FirstOrDefaultAsync(m => m.Title == movieDto.Title);
+                            if (movie == null)
+                            {
+                                this.logger.LogWarning(ReferencedEntityMissing);
+
+                                continue;
+                            }
+
+                            bool watchListExists = await dbContext
+                                .ApplicationUserMovies
+                                .AnyAsync(um => um.MovieId == movie.Id &&
+                                        um.ApplicationUserId == user.Id);
+                            if (watchListExists)
+                            {
+                                // Warning
+                                this.logger.LogWarning(EntityInstanceAlreadyExist);
+                                
+                                // Skip the current movie instance becauase of dublication
+                                continue;
+                            }
+
+                            ApplicationUserMovie userMovie = new ApplicationUserMovie()
+                            {
+                                ApplicationUser = user,
+                                Movie = movie
+                            };
+                            validWatchlists.Add(userMovie);
+                        }
+
+                    }
+                    await dbContext.ApplicationUserMovies.AddRangeAsync(validWatchlists);
+                    await dbContext.SaveChangesAsync();
+
+                }
+            }
+            catch (Exception e)
+            {
+                this.logger.LogError(e.Message);
+                throw;
+            }
+
+        }
 
 
         private async Task SeedRoles()
@@ -334,85 +443,7 @@ namespace CinemaApp.Data.Utilities
             }
         }
 
-        private async Task ImportWatchlistFromXml()
-        {
-            const string watchlistRootName = "Users";
 
-            string path = Path.Combine(AppContext.BaseDirectory, "Files", "watchlists.xml");
-            string watchlistsStr = await File.ReadAllTextAsync(path);
-
-            try
-            {
-                UserWatchlistDto[]? watchlistsDtos = xmlHelper
-                    .Deserialize<UserWatchlistDto[]>(watchlistsStr, watchlistRootName);
-
-                if (watchlistsDtos != null && watchlistsDtos.Length > 0)
-                {
-                    ICollection<ApplicationUserMovie> validWatchlists = new List<ApplicationUserMovie>();
-                    foreach (UserWatchlistDto watchlistDto in watchlistsDtos)
-                    {
-                        if (!this.entityValidator.IsValid(watchlistDto))
-                        {
-                            // Log the message
-                            this.logger.LogWarning(this.BuildEntityValidatorWarningMessage(nameof(ApplicationUserMovie)));
-
-                            // Skip if not valid
-                            continue;
-                        }
-
-                        ApplicationUser? user = await this.userManager
-                            .FindByNameAsync(watchlistDto.Username);
-                        if (user == null)
-                        {
-                            // Log the message
-                            this.logger.LogWarning(ReferencedEntityMissing);
-
-                            // Skip if not valid
-                            continue;
-                        }
-
-                        foreach (UserWatchlistMovieDto movieDto in watchlistDto.Movies)
-                        {
-                            if (!this.entityValidator.IsValid(movieDto))
-                            {
-                                // Log the message
-                                this.logger.LogWarning(this.BuildEntityValidatorWarningMessage(nameof(ApplicationUserMovie)));
-
-                                // Skip if not valid
-                                continue;
-                            }
-
-                            Movie? movie = await this.dbContext
-                                .Movies
-                                .FirstOrDefaultAsync(m => m.Title == movieDto.Title);
-                            if (movie == null)
-                            {
-                                this.logger.LogWarning(ReferencedEntityMissing);
-
-                                continue;
-                            }
-
-                            ApplicationUserMovie userMovie = new ApplicationUserMovie()
-                            {
-                                ApplicationUser = user,
-                                Movie = movie
-                            };
-                            validWatchlists.Add(userMovie);
-                        }
-
-                    }
-                    await dbContext.ApplicationUserMovies.AddRangeAsync(validWatchlists);
-                    await dbContext.SaveChangesAsync();
-
-                }
-            }
-            catch (Exception e)
-            {
-                this.logger.LogError(e.Message);
-                throw;
-            }
-
-        }
 
 
 
